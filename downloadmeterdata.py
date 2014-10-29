@@ -87,8 +87,10 @@ def download_meterdata(metermetadata, metersequencedata):
 		download_file(url, filename + '.xml')
 		#Update the sequence number
 		newseq = xml2csv(filename)
-		newseqarray = np.append(newseqarray,newseq)
-		print 'new sequence number to write to file is ' + newseq
+		if newseq > 0:
+			newseqarray = np.append(newseqarray,newseq)
+		else:
+			newseqarray = np.append(newseqarray, lastseq)
 		os.remove(filename + '.xml')
 	joineddf[seqNumberColumn] = newseqarray
 	joineddf.ix[:, [customerColumn,meterNumberColumn, seqNumberColumn]].to_csv(metersequencedata, index=False)
@@ -107,17 +109,26 @@ def xmlrecordtoarray(read):
 
 def parsemeterxml(xmlfile):
 	out_data = []
-	tree = etree.parse(xmlfile)
-	meter = tree.getroot().getchildren()[0]
+	try:
+		tree = etree.parse(xmlfile)
+		meter = tree.getroot().getchildren()[0]
 
-	for read in meter.findall("read"):
-		read_info = xmlrecordtoarray(read)
-		if read_info:
-			out_data.append(read_info)
+		for read in meter.findall("read"):
+			read_info = xmlrecordtoarray(read)
+			if read_info:
+				out_data.append(read_info)
+	except Exception, e:
+		print e
+
 	return out_data
 
 def xml2csv(filename):
 	data = parsemeterxml(filename + '.xml')
+
+	if not data:
+		print "Xml document failed to parse! Csv file will not be generated."
+		return -1
+
 	#If a file for this month already exists, don't write a header
 
 	# Note that the timestamp in the xml file is a UTC with an additional
